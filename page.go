@@ -7,6 +7,9 @@ import (
 	"unsafe"
 )
 
+// page 整体是存到磁盘的结构
+
+// ptr之前占用了16个字节
 const pageHeaderSize = int(unsafe.Offsetof(((*page)(nil)).ptr))
 
 const minKeysPerPage = 2
@@ -15,10 +18,10 @@ const branchPageElementSize = int(unsafe.Sizeof(branchPageElement{}))
 const leafPageElementSize = int(unsafe.Sizeof(leafPageElement{}))
 
 const (
-	branchPageFlag   = 0x01
-	leafPageFlag     = 0x02
-	metaPageFlag     = 0x04
-	freelistPageFlag = 0x10
+	branchPageFlag   = 0x01 // 分支
+	leafPageFlag     = 0x02 // 叶子
+	metaPageFlag     = 0x04 // 元信息
+	freelistPageFlag = 0x10 // 空闲列表
 )
 
 const (

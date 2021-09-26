@@ -250,12 +250,14 @@ func (c *Cursor) next() (key []byte, value []byte, flags uint32) {
 }
 
 // search recursively performs a binary search against a given page/node until it finds a given key.
+// 检索key，有node就走node检索，有page就走page检索
 func (c *Cursor) search(key []byte, pgid pgid) {
 	p, n := c.bucket.pageNode(pgid)
 	if p != nil && (p.flags&(branchPageFlag|leafPageFlag)) == 0 {
 		panic(fmt.Sprintf("invalid page type: %d: %x", p.id, p.flags))
 	}
 	e := elemRef{page: p, node: n}
+	// 记录走过的节点（page,node,index），方便方法之间调用（减少参数）
 	c.stack = append(c.stack, e)
 
 	// If we're on a leaf page/node then find the specific node.
@@ -263,11 +265,12 @@ func (c *Cursor) search(key []byte, pgid pgid) {
 		c.nsearch(key)
 		return
 	}
-
+	// 有内存node，走node检索，找到对应的节点后，递归进行search
 	if n != nil {
 		c.searchNode(key, n)
 		return
 	}
+	// 只有磁盘page，走磁盘page检索，找到对应的节点后，递归进行search
 	c.searchPage(key, p)
 }
 
@@ -363,9 +366,11 @@ func (c *Cursor) node() *node {
 		return ref.node
 	}
 
+	// 把整个树的一条链路，都加载page为node（递归加载）
 	// Start from root and traverse down the hierarchy.
 	var n = c.stack[0].node
 	if n == nil {
+
 		n = c.bucket.node(c.stack[0].page.id, nil)
 	}
 	for _, ref := range c.stack[:len(c.stack)-1] {

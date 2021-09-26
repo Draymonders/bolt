@@ -37,6 +37,7 @@ func (n *node) minKeys() int {
 }
 
 // size returns the size of the node after serialization.
+// node 转换为 page 存的磁盘实际占用bit
 func (n *node) size() int {
 	sz, elsz := pageHeaderSize, n.pageElementSize()
 	for i := 0; i < len(n.inodes); i++ {
@@ -46,6 +47,8 @@ func (n *node) size() int {
 	return sz
 }
 
+// 这个方法简化点 就是 node.size() < v
+//	如果v可能比 sz还要小，这里判断的不是很好
 // sizeLessThan returns true if the node is less than a given size.
 // This is an optimization to avoid calculating a large node when we only need
 // to know if it fits inside a certain page size.
@@ -125,6 +128,7 @@ func (n *node) put(oldKey, newKey, value []byte, pgid pgid, flags uint32) {
 	// Find insertion index.
 	index := sort.Search(len(n.inodes), func(i int) bool { return bytes.Compare(n.inodes[i].key, oldKey) != -1 })
 
+	// 二分插入排序，保证整个nodes是有序的
 	// Add capacity and shift nodes if we don't have an exact match and need to insert.
 	exact := (len(n.inodes) > 0 && index < len(n.inodes) && bytes.Equal(n.inodes[index].key, oldKey))
 	if !exact {
@@ -247,6 +251,7 @@ func (n *node) write(p *page) {
 
 // split breaks up a node into multiple smaller nodes, if appropriate.
 // This should only be called from the spill() function.
+// b+树 分裂过程，先splitTwo
 func (n *node) split(pageSize int) []*node {
 	var nodes []*node
 
@@ -312,6 +317,7 @@ func (n *node) splitTwo(pageSize int) (*node, *node) {
 // splitIndex finds the position where a page will fill a given threshold.
 // It returns the index as well as the size of the first page.
 // This is only be called from split().
+// 指定 n.node 最小的分裂size，去找到对应的inode[index]
 func (n *node) splitIndex(threshold int) (index, sz int) {
 	sz = pageHeaderSize
 
@@ -336,6 +342,7 @@ func (n *node) splitIndex(threshold int) (index, sz int) {
 
 // spill writes the nodes to dirty pages and splits nodes as it goes.
 // Returns an error if dirty pages cannot be allocated.
+// 将node写入到page中，有 page 拆分算法
 func (n *node) spill() error {
 	var tx = n.bucket.tx
 	if n.spilled {
@@ -345,6 +352,7 @@ func (n *node) spill() error {
 	// Spill child nodes first. Child nodes can materialize sibling nodes in
 	// the case of split-merge so we cannot use a range loop. We have to check
 	// the children size on every loop iteration.
+	// 按照 inode.key 去排序
 	sort.Sort(n.children)
 	for i := 0; i < len(n.children); i++ {
 		if err := n.children[i].spill(); err != nil {
@@ -357,9 +365,11 @@ func (n *node) spill() error {
 
 	// Split nodes into appropriate sizes. The first node will always be n.
 	var nodes = n.split(tx.db.pageSize)
+	// nodes已经是根据 pageSize split
 	for _, node := range nodes {
 		// Add node's page to the freelist if it's not new.
 		if node.pgid > 0 {
+			// pgid 先释放到 freelist
 			tx.db.freelist.free(tx.meta.txid, tx.page(node.pgid))
 			node.pgid = 0
 		}
@@ -406,6 +416,7 @@ func (n *node) spill() error {
 
 // rebalance attempts to combine the node with sibling nodes if the node fill
 // size is below a threshold or if there are not enough keys.
+// rebalance page合并
 func (n *node) rebalance() {
 	if !n.unbalanced {
 		return
@@ -594,6 +605,7 @@ func (s nodes) Less(i, j int) bool { return bytes.Compare(s[i].inodes[0].key, s[
 // inode represents an internal node inside of a node.
 // It can be used to point to elements in a page or point
 // to an element which hasn't been added to a page yet.
+// 内存形式的节点
 type inode struct {
 	flags uint32
 	pgid  pgid

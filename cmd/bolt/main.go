@@ -19,7 +19,7 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
-	"github.com/boltdb/bolt"
+	"github.com/draymonders/bolt"
 )
 
 var (
@@ -59,7 +59,7 @@ var (
 // PageHeaderSize represents the size of the bolt.page header.
 const PageHeaderSize = 16
 
-func main() {
+func main1() {
 	m := NewMain()
 	if err := m.Run(os.Args[1:]...); err == ErrUsage {
 		os.Exit(2)

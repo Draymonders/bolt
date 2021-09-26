@@ -970,7 +970,7 @@ type Info struct {
 type meta struct {
 	magic    uint32
 	version  uint32
-	pageSize uint32
+	pageSize uint32 // 4096
 	flags    uint32
 	root     bucket
 	freelist pgid
@@ -1011,6 +1011,7 @@ func (m *meta) write(p *page) {
 	// Calculate the checksum.
 	m.checksum = m.sum64()
 
+	// 下面这句话等价于  *(*meta)(unsafe.Pointer(&p.ptr)) = *m
 	m.copy(p.meta())
 }
 

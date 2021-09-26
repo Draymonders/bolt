@@ -29,6 +29,7 @@ func TestPage_typ(t *testing.T) {
 // Ensure that the hexdump debugging function doesn't blow up.
 func TestPage_dump(t *testing.T) {
 	(&page{id: 256}).hexdump(16)
+	(&page{id: 256}).hexdump(8)
 }
 
 func TestPgids_merge(t *testing.T) {

@@ -39,7 +39,7 @@ type Bucket struct {
 	buckets  map[string]*Bucket // subbucket cache
 	page     *page              // inline page reference
 	rootNode *node              // materialized node for the root page.
-	nodes    map[pgid]*node     // node cache
+	nodes    map[pgid]*node     // node cache，pageId -> node
 
 	// Sets the threshold for filling nodes when they split. By default,
 	// the bucket will fill to 50% but it can be useful to increase this
